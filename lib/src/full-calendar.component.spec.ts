@@ -561,7 +561,8 @@ describe('with month view and dayCellContent as a function', () => {
 
 // https://github.com/fullcalendar/fullcalendar/issues/7191
 describe('dayGridMonth view dot-event elements, custom content, and eventDidMount', () => {
-  let dotEventEl: any
+  let eventDidMountCnt: number | undefined
+  let dotEventEl: HTMLElement | undefined
 
   @Component({
     template: `
@@ -583,6 +584,7 @@ describe('dayGridMonth view dot-event elements, custom content, and eventDidMoun
       initialView: 'dayGridMonth',
       eventDidMount(arg) {
         dotEventEl = arg.el
+        eventDidMountCnt!++
       },
     };
   }
@@ -591,6 +593,9 @@ describe('dayGridMonth view dot-event elements, custom content, and eventDidMoun
   let fixture: ComponentFixture<MonthComponent2>;
 
   beforeEach(() => {
+    eventDidMountCnt = 0
+    dotEventEl = undefined
+
     TestBed.configureTestingModule({
       imports: [FullCalendarModule],
       declarations: [MonthComponent2]
@@ -601,12 +606,72 @@ describe('dayGridMonth view dot-event elements, custom content, and eventDidMoun
     fixture.detectChanges(); // necessary for initializing change detection system
   });
 
-  it('has elements visible in DOM', () => {
-    expect(dotEventEl).toBeTruthy()
-    expect(dotEventEl.offsetWidth).toBeGreaterThan(0)
-    expect(dotEventEl.offsetHeight).toBeGreaterThan(0)
+  it('has elements visible in DOM', (done) => {
+    setTimeout(() => {
+      expect(eventDidMountCnt).toBe(1)
+      expect(dotEventEl).toBeTruthy()
+      expect(dotEventEl!.offsetWidth).toBeGreaterThan(0)
+      expect(dotEventEl!.offsetHeight).toBeGreaterThan(0)
+      done()
+    }, 100)
   });
 });
+
+
+;['auto', 'background'].forEach((eventDisplay) => {
+  describe(`during ${eventDisplay} custom event rendering`, async () => {
+    let eventDidMountCalled: boolean | undefined;
+    let component: MonthComponent3;
+    let fixture: ComponentFixture<MonthComponent3>;
+
+    @Component({
+      template: `
+        <full-calendar #calendar [options]="calendarOptions">
+          <ng-template #eventContent let-arg>
+            <i>{{ arg.event.title }}</i>
+          </ng-template>
+        </full-calendar>
+      `
+    })
+    class MonthComponent3 {
+      calendarOptions: CalendarOptions = {
+        plugins: [dayGridPlugin],
+        initialDate: '2023-03-20',
+        events: [
+          {
+            start: '2023-03-20',
+            display: eventDisplay,
+          }
+        ],
+        initialView: 'dayGridMonth',
+        eventDidMount(eventInfo) {
+          expect(eventInfo.el).toBeTruthy()
+          eventDidMountCalled = true
+        },
+      };
+    }
+
+    beforeEach(() => {
+      eventDidMountCalled = false
+
+      TestBed.configureTestingModule({
+        imports: [FullCalendarModule],
+        declarations: [MonthComponent3]
+      }).compileComponents();
+
+      fixture = TestBed.createComponent(MonthComponent3);
+      component = fixture.componentInstance;
+      fixture.detectChanges(); // necessary for initializing change detection system
+    });
+
+    it('receives el', (done) => {
+      setTimeout(() => {
+        expect(eventDidMountCalled).toBe(true)
+        done()
+      }, 100)
+    })
+  })
+})
 
 
 // FullCalendar data utils
